@@ -115,8 +115,8 @@ import json, requests
 
 # j is a json or a list of jsons
 def post_it(j):
-#    url = "http://ec2-54-213-238-96.us-west-2.compute.amazonaws.com:8080/post/"
-    url = "http://ec2-54-213-238-96.us-west-2.compute.amazonaws.com:80/post/"
+    url = "http://ec2-54-213-238-96.us-west-2.compute.amazonaws.com:8080/post/"
+#    url = "http://ec2-54-213-238-96.us-west-2.compute.amazonaws.com:80/post/"
     headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
     r = requests.post(url, data=json.dumps(j), headers=headers)
 ######################################################

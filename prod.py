@@ -6,6 +6,7 @@ from pymongo import MongoClient
 client = MongoClient()
 db = client.clarity
 events = db.events
+from pymongo.errors import InvalidDocument
 
 # Method one
 #from bson.objectid import ObjectId
@@ -20,11 +21,15 @@ def hello():
 def save_post():
     r = request.json
     if type(r) == type([]):
-        print 'list'
-#        for item in r:
-#            events.put(item)
+        for item in r:
+#            events.insert(item)
+            try:
+                events.insert(item)
+            except (TypeError, InvalidDocument) as inst:
+                print inst
+                pass
     elif type(r) == type({}):
-        print r, type(r)
+        events.insert(r)
 #        try:
 #            xpto = events.put(r)
 #            print xpto
@@ -32,12 +37,12 @@ def save_post():
 #            print type(inst)
     else:
         print 'nope'
-    return 'a', 200
+    return 'OK', 200
      
     
     
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=80)
+    app.run(host='0.0.0.0', port=80, debug=True)
 
 
 

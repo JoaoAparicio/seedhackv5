@@ -147,7 +147,8 @@ def main(argv):
 #    for i in r['items']:
 #        print i
 
-    calendarlist = ['hello@dotforgeaccelerator.com', 'river@dotforgeaccelerator.com', 'lee@dotforgeaccelerator.com', 'lee.strafford@googlemail.com', 'emma@dotforgeaccelerator.com']
+#    calendarlist = ['hello@dotforgeaccelerator.com', 'river@dotforgeaccelerator.com', 'lee@dotforgeaccelerator.com', 'lee.strafford@googlemail.com', 'emma@dotforgeaccelerator.com']
+    calendarlist = ['hello@dotforgeaccelerator.com', 'river@dotforgeaccelerator.com', 'lee@dotforgeaccelerator.com', 'lee.strafford@googlemail.com']
     for cId in calendarlist:
         r = service.events().list(calendarId=cId).execute()
         l = map(cal_item_to_clarity_item, r['items'])

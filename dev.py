@@ -9,7 +9,8 @@ events = db.events
 from pymongo.errors import InvalidDocument
 users = db.users
 
-import json
+import json, re
+import datetime, time
 
 # Method one
 #from bson.objectid import ObjectId
@@ -123,12 +124,51 @@ def get_communication():
 #    return json.dumps({'n_phone_calls':n_phone_calls, 'calls':d, 'duration':duration, 'n_txts':n_txts}), 200
     return json.dumps({'n_phone_calls':n_phone_calls, 'calls':res, 'n_txts':n_txts, 'total_txts':total_txts}), 200
 
+def convert_date_to_timestamp(start):
+    if 'dateTime' in start.keys():
+        dt = start['dateTime']
+        if len(dt.split('+'))==2:
+            timestamp = time.mktime(datetime.datetime.strptime(dt.split('+')[0], '%Y-%m-%dT%H:%M:%S').timetuple())
+            timestamp = str( int(timestamp) + 3600 ) + '000'
+            return timestamp
+        if len(dt.split('Z')) ==2:
+            timestamp = time.mktime(datetime.datetime.strptime(dt.split('Z')[0], '%Y-%m-%dT%H:%M:%S').timetuple())
+            timestamp = str( int(timestamp) ) + '000'
+            return timestamp
+    if 'date' in start.keys():
+        dt = start['date']
+        timestamp = time.mktime(datetime.datetime.strptime(dt.split('.')[0], '%Y-%m-%d').timetuple())
+        timestamp = str( int(timestamp) ) + '000'
+        return timestamp
+
 @app.route('/calendar/', methods = ['POST'])
 def get_calendar():
     r = request.json
     start = r['start']
     end = r['end']
     cal_events = events.find({'$and':[{'platform':'calendar'},{'timestamp':{'$gt':start}},{'timestamp':{'$lt':end}}]})
+    res = []
+    for item in cal_events:
+        new_item = {}
+        for type_e in ['meet', 'event', 'skype']:
+            if re.search(type_e, item['summary'].lower()):
+                new_item['type'] = type_e
+            if 'type' not in new_item.keys():
+                new_item['type'] = 'meet'
+        for tag in ['industryx', 'fintech', 'techcity']:
+            if re.search(tag, item['summary'].lower()):
+                new_item['tag'] = tag
+            if 'tag' not in new_item.keys():
+                new_item['tag'] = ''
+        new_item['tag'] = new_item['type'] + ' ' + new_item['tag']
+        del new_item['type']
+        new_item['startTime'] = convert_date_to_timestamp(item['data']['start'])
+        new_item['endTime'] = convert_date_to_timestamp(item['data']['end'])
+        new_item['title'] = item['data']['summary']
+        res.append(new_item)
+    return json.dumps(res), 200
+
+         
 
 @app.route('/calendarfeed', methods= ['GET'])
 def get_calendarfeed():

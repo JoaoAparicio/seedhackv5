@@ -9,7 +9,8 @@ events = db.events
 from pymongo.errors import InvalidDocument
 users = db.users
 
-import json
+import json, re
+import datetime, time
 
 # Method one
 #from bson.objectid import ObjectId
@@ -123,6 +124,22 @@ def get_communication():
 #    return json.dumps({'n_phone_calls':n_phone_calls, 'calls':d, 'duration':duration, 'n_txts':n_txts}), 200
     return json.dumps({'n_phone_calls':n_phone_calls, 'calls':res, 'n_txts':n_txts, 'total_txts':total_txts}), 200
 
+def convert_date_to_timestamp(start):
+    if 'dateTime' in start.keys():
+        dt = start['dateTime']
+        if len(dt.split('+'))==2:
+            timestamp = time.mktime(datetime.datetime.strptime(dt.split('+')[0], '%Y-%m-%dT%H:%M:%S').timetuple())
+            timestamp = str( int(timestamp) + 3600 ) + '000'
+            return timestamp
+        if len(dt.split('Z')) ==2:
+            timestamp = time.mktime(datetime.datetime.strptime(dt.split('Z')[0], '%Y-%m-%dT%H:%M:%S').timetuple())
+            timestamp = str( int(timestamp) ) + '000'
+            return timestamp
+    if 'date' in start.keys():
+        dt = start['date']
+        timestamp = time.mktime(datetime.datetime.strptime(dt.split('.')[0], '%Y-%m-%d').timetuple())
+        timestamp = str( int(timestamp) ) + '000'
+        return timestamp
 
 @app.route('/calendar/', methods = ['POST'])
 def get_calendar():
@@ -130,12 +147,73 @@ def get_calendar():
     start = r['start']
     end = r['end']
     cal_events = events.find({'$and':[{'platform':'calendar'},{'timestamp':{'$gt':start}},{'timestamp':{'$lt':end}}]})
+    res = []
+    for item in cal_events:
+        new_item = {}
+        for type_e in ['meet', 'event', 'skype']:
+            if re.search(type_e, item['summary'].lower()):
+                new_item['type'] = type_e
+            if 'type' not in new_item.keys():
+                new_item['type'] = 'meet'
+        for tag in ['industryx', 'fintech', 'techcity']:
+            if re.search(tag, item['summary'].lower()):
+                new_item['tag'] = tag
+            if 'tag' not in new_item.keys():
+                new_item['tag'] = ''
+        new_item['tag'] = new_item['type'] + ' ' + new_item['tag']
+        del new_item['type']
+        new_item['startTime'] = convert_date_to_timestamp(item['data']['start'])
+        new_item['endTime'] = convert_date_to_timestamp(item['data']['end'])
+        new_item['title'] = item['data']['summary']
+        res.append(new_item)
+    return json.dumps(res), 200
 
+         
 
+@app.route('/calendarfeed', methods= ['GET'])
+def get_calendarfeed():
 
+    text_duration = 1000 * 60
+
+    start = request.args.get('start')
+    end= request.args.get('end')
+
+    android = events.find({'$and': [{'platform':'android'},{'timestamp':{'$gt':start}},{'timestamp':{'$lt':end}}]})
     
+    final_json = []
+
+    for item in android:
+        ev_title = ""
+        ev_start = 0
+        ev_end = 0
+        ev_tag = "__"
+
+        if item['process_name'] == 'call_log':
+            ev_title = "Call with "
+            if 'person_name' in item['data']:
+                ev_title = ev_title + item['data']['person_name']
+            else:
+                ev_title = ev_title + item['data']['person_number']
+
+            ev_start = int(item['timestamp'])
+            ev_end = ev_start + int(item['data']['duration'])
+            ev_tag="call"
+        elif item['process_name'] == 'sms_log':
+            ev_title = "Text with " + item['data']['address']
+            ev_start = int(item['timestamp'])
+            ev_end = ev_start + text_duration
+            ev_tag = "sms"
+
+        final_json.append({
+            "startTime": ev_start,
+            "endTime": ev_end,
+            "title": ev_title,
+            "tag": ev_tag,
+        })
+
+    print json.dumps(final_json)
+    return json.dumps(final_json)
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=80, debug=False)
-
-
 

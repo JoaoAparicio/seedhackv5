@@ -125,6 +125,7 @@ def cal_item_to_clarity_item(cal_item, user):
             'data':data,
             'process_id':process_id,
             'process_name':process_name,
+            'process_type':process_type,
             'summary':summary}
 ######################################################
 
@@ -167,6 +168,7 @@ def main(argv):
 
 #    calendarlist = ['hello@dotforgeaccelerator.com', 'river@dotforgeaccelerator.com', 'lee@dotforgeaccelerator.com', 'lee.strafford@googlemail.com', 'emma@dotforgeaccelerator.com']
     calendarlist = ['hello@dotforgeaccelerator.com', 'river@dotforgeaccelerator.com', 'lee@dotforgeaccelerator.com', 'lee.strafford@googlemail.com']
+    counter = 0
     for cId in calendarlist:
         r = service.events().list(calendarId=cId).execute()
 #        for i in r['items']:
@@ -174,12 +176,16 @@ def main(argv):
 #        l = map(cal_item_to_clarity_item, r['items'], {'user':'104138942503954653328'}})
 #        post_it(l)
 
+        print len(r['items'])
         l = []
         for item in r['items']:
-            to_ap = cal_item_to_clarity_item(item, user='104138942503954653328')
+#            to_ap = cal_item_to_clarity_item(item, user='104138942503954653328')
+            to_ap = item
             l.append(to_ap)
-            print to_ap
+#            print to_ap
+        counter += len(l)
 #        post_it(l)
+    print counter
 
 #    print 'total no time:', no_time_counter
 #        for clarityitem in l:

@@ -22,16 +22,17 @@ def refresh_token():
     print r
     if 'id' not in r.keys():
         return 'NO ID', 400
-    us = users.find({'id':r['id']})
-    u = us.count()
-    if u:
+    us = users.find_one({'id':r['id']})
+#    u = us.count()
+    if us:
 #        print r['id']
 #        print r
         users.update({'id':r['id']}, {'$set' : r})
 #        users.find_and_modify(query={'id',r['id']}, update={'$set', {'a':'b'}})
+        del us['_id']
         return json.dumps(us), 200
     else:
-        users.insert(r)
+        del us['_id']
         return json.dumps(us), 200
 
 @app.route("/")
@@ -78,7 +79,12 @@ def get_websites():
     for w in websites:
         d[w['process_name']] += w['data']['duration']
         v[w['process_name']] += 1
-    return json.dumps({'duration':d, 'visits':v}), 200
+    res = {}
+    for website in d.keys():
+        res[website] = [v[website], d[website]]
+
+#    return json.dumps({'duration':d, 'visits':v}), 200
+    return json.dumps(res), 200
 
 
 @app.route('/communication/', methods = ['POST'])
@@ -92,17 +98,37 @@ def get_communication():
     n_phone_calls = calls.count()
 #    print n_phone_calls
     d = defaultdict(int)
+    duration = defaultdict(int)
     d['ads'] += 1
     for c in calls:
 #        print c
         if 'person_name' in c['data']:
 #            print ['data']['person_name']
             d[c['data']['person_name']] += 1
+            duration[c['data']['person_name']] += int(c['data']['duration'])
         else:
 #            print ['data']['person_number']
             d[c['data']['person_number']] += 1
+            duration[c['data']['person_number']] += int(c['data']['duration'])
 #    print d
-    return json.dumps({'n_phone_calls':n_phone_calls, 'top':d}), 200
+    txts = events.find({'$and':[{'process_name':'sms_log'},{'timestamp':{'$gt':start}},{'timestamp':{'$lt':end}}]})
+    n_txts = defaultdict(int)
+    for t in txts:
+        n_txts[t['data']['address']] += 1
+    total_txts =sum (  n_txts.values() )
+
+    res = {}
+    for p in d.keys():
+        res[p] = [d[p], duration[p]]
+#    return json.dumps({'n_phone_calls':n_phone_calls, 'calls':d, 'duration':duration, 'n_txts':n_txts}), 200
+    return json.dumps({'n_phone_calls':n_phone_calls, 'calls':res, 'n_txts':n_txts, 'total_txts':total_txts}), 200
+
+@app.route('/calendar/', methods = ['POST'])
+def get_calendar():
+    r = request.json
+    start = r['start']
+    end = r['end']
+    cal_events = events.find({'$and':[{'platform':'calendar'},{'timestamp':{'$gt':start}},{'timestamp':{'$lt':end}}]})
 
 @app.route('/calendarfeed', methods= ['GET'])
 def get_calendarfeed():
@@ -116,7 +142,7 @@ def get_calendarfeed():
     
     final_json = []
 
-    for item in androidAndChrome:
+    for item in android:
         ev_title = ""
         ev_start = 0
         ev_end = 0

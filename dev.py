@@ -80,9 +80,10 @@ def get_websites():
     for w in websites:
         d[w['process_name']] += w['data']['duration']
         v[w['process_name']] += 1
+        fvico[w['process_name']] = w['data']['favIconUrl']
     res = {}
     for website in d.keys():
-        res[website] = [v[website], d[website]]
+        res[website] = [v[website], d[website], fvico[website]]
 
 #    return json.dumps({'duration':d, 'visits':v}), 200
     return json.dumps(res), 200

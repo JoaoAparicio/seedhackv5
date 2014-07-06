@@ -135,10 +135,10 @@ def get_calendarfeed():
 
     text_duration = 1000 * 60
 
-    start_time = request.args.get('start')
-    end_time = request.args.get('end')
+    start = request.args.get('start')
+    end= request.args.get('end')
 
-    android = events.find({'$and': [{'platform':'android'},{'timestamp':{'$gt':start}},{'timestamp':{'$lt':end}])
+    android = events.find({'$and': [{'platform':'android'},{'timestamp':{'$gt':start}},{'timestamp':{'$lt':end}}]})
     
     final_json = []
 
@@ -157,7 +157,7 @@ def get_calendarfeed():
 
             ev_start = int(item['timestamp'])
             ev_end = ev_start + int(item['data']['duration'])
-
+            ev_tag="call"
         elif item['process_name'] == 'sms_log':
             ev_title = "Text with " + item['data']['address']
             ev_start = int(item['timestamp'])

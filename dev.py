@@ -192,16 +192,20 @@ def get_calendarfeed():
 
         if item['process_name'] == 'call_log':
             ev_title = "Call with "
+            if item['data']['process_type'] == 'missed':
+                ev_title = "Missed call from "
             if 'person_name' in item['data']:
                 ev_title = ev_title + item['data']['person_name']
             else:
                 ev_title = ev_title + item['data']['person_number']
 
             ev_start = int(item['timestamp'])
-            ev_end = ev_start + int(item['data']['duration'])
+            ev_end = ev_start + max(int(item['data']['duration']), text_duration)
             ev_tag="call"
         elif item['process_name'] == 'sms_log':
-            ev_title = "Text with " + item['data']['address']
+            ev_title = "Text to " + item['data']['address']
+            if item['data']['process_type'] == "received":
+                ev_title = "Text from " + item['data']['address']
             ev_start = int(item['timestamp'])
             ev_end = ev_start + text_duration
             ev_tag = "sms"

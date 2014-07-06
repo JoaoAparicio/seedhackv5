@@ -103,9 +103,51 @@ def get_communication():
             d[c['data']['person_number']] += 1
 #    print d
     return json.dumps({'n_phone_calls':n_phone_calls, 'top':d}), 200
+
+@app.route('/calendarfeed', methods= ['GET'])
+def get_calendarfeed():
+
+    text_duration = 1000 * 60
+
+    start_time = request.args.get('start')
+    end_time = request.args.get('end')
+
+    android = events.find({'$and': [{'platform':'android'},{'timestamp':{'$gt':start}},{'timestamp':{'$lt':end}])
     
+    final_json = []
+
+    for item in androidAndChrome:
+        ev_title = ""
+        ev_start = 0
+        ev_end = 0
+        ev_tag = "__"
+
+        if item['process_name'] == 'call_log':
+            ev_title = "Call with "
+            if 'person_name' in item['data']:
+                ev_title = ev_title + item['data']['person_name']
+            else:
+                ev_title = ev_title + item['data']['person_number']
+
+            ev_start = int(item['timestamp'])
+            ev_end = ev_start + int(item['data']['duration'])
+
+        elif item['process_name'] == 'sms_log':
+            ev_title = "Text with " + item['data']['address']
+            ev_start = int(item['timestamp'])
+            ev_end = ev_start + text_duration
+            ev_tag = "sms"
+
+        final_json.append({
+            "startTime": ev_start,
+            "endTime": ev_end,
+            "title": ev_title,
+            "tag": ev_tag,
+        })
+
+    print json.dumps(final_json)
+    return json.dumps(final_json)
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8080, debug=True)
-
-
 

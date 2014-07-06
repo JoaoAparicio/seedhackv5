@@ -48,7 +48,6 @@ parser = argparse.ArgumentParser(
 # and Client secret on the APIs page in the Cloud Console:
 # <https://cloud.google.com/console#/project/421139284824/apiui>
 CLIENT_SECRETS = os.path.join(os.path.dirname(__file__), 'client_secrets.json')
-print CLIENT_SECRETS
 
 # Set up a Flow object to be used for authentication.
 # Add one or more of the following scopes. PLEASE ONLY ADD THE SCOPES YOU
@@ -63,9 +62,27 @@ FLOW = client.flow_from_clientsecrets(CLIENT_SECRETS,
 
 import re
 
+def convert_date_to_timestamp(start):
+    if 'dateTime' in start.keys():
+        dt = start['dateTime']
+        if len(dt.split('+'))==2:
+            timestamp = time.mktime(datetime.datetime.strptime(dt.split('+')[0], '%Y-%m-%dT%H:%M:%S').timetuple())
+            timestamp = str( int(timestamp) + 3600 ) + '000'
+            return timestamp
+        if len(dt.split('Z')) ==2:
+            timestamp = time.mktime(datetime.datetime.strptime(dt.split('Z')[0], '%Y-%m-%dT%H:%M:%S').timetuple())
+            timestamp = str( int(timestamp) ) + '000'
+            return timestamp
+    if 'date' in start.keys():
+        dt = start['date']
+        timestamp = time.mktime(datetime.datetime.strptime(dt.split('.')[0], '%Y-%m-%d').timetuple())
+        timestamp = str( int(timestamp) ) + '000'
+        return timestamp
+
+
 #no_time_counter = 0
 ######################################################
-def cal_item_to_clarity_item(cal_item):
+def cal_item_to_clarity_item(cal_item, user):
     if cal_item['status'] == 'cancelled':
         return None
     platform = 'calendar'
@@ -74,24 +91,25 @@ def cal_item_to_clarity_item(cal_item):
     except KeyError:
         device_name = ''
     try:
-#        t = cal_item['created']
-        t = cal_item['start']['dateTime']
+        start = cal_item['start']
+        timestamp = convert_date_to_timestamp(start)
     except KeyError:
-#        print 'no start date'
-#        no_time_counter += 1
         return None
-    try:
-        timestamp = time.mktime(datetime.datetime.strptime(t.split('.')[0], '%Y-%m-%dT%H:%M:%S').timetuple())
-        timestamp = str( int(timestamp) ) + '000'
-    except ValueError:
-#        print t
-        timestamp = time.mktime(datetime.datetime(1971,1,1).timetuple())
+#    try:
+#        timestamp = time.mktime(datetime.datetime.strptime(t.split('.')[0], '%Y-%m-%dT%H:%M:%S').timetuple())
+#        timestamp = str( int(timestamp) ) + '000'
+#    except ValueError:
+#        timestamp = time.mktime(datetime.datetime(1971,1,1).timetuple())
+
 #    timestamp = time.mktime(datetime.datetime.strptime(t.split('.')[0], '%Y-%m-%dT%H:%M:%S').timetuple())
 #    timestamp = str( int(timestamp) ) + '000'
-    try:  ## sometimes the creator is not there??
-        user = cal_item['creator']['displayName']
-    except KeyError:
-        user = ''
+
+#    if 'user' in kwargs:
+#        user = kwargs['user']
+#    try:  ## sometimes the creator is not there??
+#        user = cal_item['creator']['displayName']
+#    except KeyError:
+#        user = ''
     data = cal_item
     process_id = cal_item.get('id','')
     process_name = cal_item.get('kind','')
@@ -151,8 +169,18 @@ def main(argv):
     calendarlist = ['hello@dotforgeaccelerator.com', 'river@dotforgeaccelerator.com', 'lee@dotforgeaccelerator.com', 'lee.strafford@googlemail.com']
     for cId in calendarlist:
         r = service.events().list(calendarId=cId).execute()
-        l = map(cal_item_to_clarity_item, r['items'])
-        post_it(l)
+#        for i in r['items']:
+#            print i
+#        l = map(cal_item_to_clarity_item, r['items'], {'user':'104138942503954653328'}})
+#        post_it(l)
+
+        l = []
+        for item in r['items']:
+            to_ap = cal_item_to_clarity_item(item, user='104138942503954653328')
+            l.append(to_ap)
+            print to_ap
+#        post_it(l)
+
 #    print 'total no time:', no_time_counter
 #        for clarityitem in l:
 #            if clarityitem:

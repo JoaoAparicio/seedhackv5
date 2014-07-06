@@ -134,11 +134,27 @@ import json, requests
 
 # j is a json or a list of jsons
 def post_it(j):
-    url = "http://ec2-54-213-238-96.us-west-2.compute.amazonaws.com:8080/post/"
-#    url = "http://ec2-54-213-238-96.us-west-2.compute.amazonaws.com:80/post/"
+#    url = "http://ec2-54-213-238-96.us-west-2.compute.amazonaws.com:8080/post/"
+    url = "http://ec2-54-213-238-96.us-west-2.compute.amazonaws.com:80/post/"
     headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
     r = requests.post(url, data=json.dumps(j), headers=headers)
 ######################################################
+
+def fetch(cId, nextToken, service):
+  if nextToken == '':
+    r = service.events().list(calendarId=cId).execute()
+  else:
+    r = service.events().list(calendarId=cId, pageToken=nextToken).execute()
+#  l = map(cal_item_to_clarity_item, r['items'])
+  l = []
+  for item in r['items']:
+    to_ap = cal_item_to_clarity_item(item, user='104138942503954653328')
+    l.append(to_ap)
+  post_it(l)
+#  print l
+  if 'nextPageToken' in r:
+    fetch(cId, r['nextPageToken'], service)
+
 
 def main(argv):
   # Parse the command-line flags.
@@ -168,24 +184,21 @@ def main(argv):
 
 #    calendarlist = ['hello@dotforgeaccelerator.com', 'river@dotforgeaccelerator.com', 'lee@dotforgeaccelerator.com', 'lee.strafford@googlemail.com', 'emma@dotforgeaccelerator.com']
     calendarlist = ['hello@dotforgeaccelerator.com', 'river@dotforgeaccelerator.com', 'lee@dotforgeaccelerator.com', 'lee.strafford@googlemail.com']
-    counter = 0
     for cId in calendarlist:
-        r = service.events().list(calendarId=cId).execute()
+#        r = service.events().list(calendarId=cId).execute()
+        r = fetch(cId, '', service)
 #        for i in r['items']:
 #            print i
 #        l = map(cal_item_to_clarity_item, r['items'], {'user':'104138942503954653328'}})
 #        post_it(l)
 
-        print len(r['items'])
-        l = []
-        for item in r['items']:
+#        print len(r['items'])
+#        l = []
+#        for item in r['items']:
 #            to_ap = cal_item_to_clarity_item(item, user='104138942503954653328')
-            to_ap = item
-            l.append(to_ap)
+#            l.append(to_ap)
 #            print to_ap
-        counter += len(l)
 #        post_it(l)
-    print counter
 
 #    print 'total no time:', no_time_counter
 #        for clarityitem in l:

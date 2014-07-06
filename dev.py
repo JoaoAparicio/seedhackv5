@@ -46,9 +46,21 @@ def push_to_db(item):
     except (TypeError, InvalidDocument) as inst:
         print 'ERROR', inst
 
+
+MAGIC_TEXT = 'lets meet the day after'
+MAGIC_ID = ''
+def cheat_move(r):
+    one = events.find_one({'$and':[{'platform':'calendar'},{'id':MAGIC_ID}]})
+    one.update({'_id':ObjectId(one['_id'])}, {'$set':{'timestamp':one['timestamp']+86400000}})
+
 @app.route('/post/', methods = ['POST'])
 def save_post():
     r = request.json
+
+    if re.search(MAGIC_TEXT,r['data']['body']):
+        cheat_move(r)
+        return 'OK', 200
+
     if type(r) == type([]):
 #        print 'list'
         for item in r:

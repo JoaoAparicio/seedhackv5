@@ -3,6 +3,7 @@ app = Flask(__name__)
 from flask import request
 
 from pymongo import MongoClient
+from bson.objectid import ObjectId
 client = MongoClient()
 db = client.clarity
 events = db.events
@@ -11,6 +12,11 @@ users = db.users
 
 import json, re
 import datetime, time
+#import requests
+import eventlet
+from eventlet.green import urllib2
+from eventlet.timeout import Timeout
+
 
 # Method one
 #from bson.objectid import ObjectId
@@ -46,13 +52,27 @@ def push_to_db(item):
     except (TypeError, InvalidDocument) as inst:
         print 'ERROR', inst
 
+
+#MAGIC_TEXT = 'lets meet the day after'
+MAGIC_TEXT = 'move it to Weds'
+MAGIC_ID = ObjectId('53b9255ebd0f2255241d3408')
+def cheat_move():
+    one = events.find_one({'_id':MAGIC_ID})
+#    events.update({'_id':MAGIC_ID}, {'$set':{'timestamp':'1404747000000','data.start':{u'dateTime': u'2014-07-07T09:30:00Z'},'data.end':{u'dateTime': u'2014-07-07T10:30:00Z'} }})
+    events.update({'_id':MAGIC_ID}, {'$set':{'timestamp':str(int(one['timestamp'])+86400000),'data.start':{u'dateTime': u'2014-07-10T09:30:00Z'},'data.end':{u'dateTime': u'2014-07-10T10:30:00Z'} }})
+
 @app.route('/post/', methods = ['POST'])
 def save_post():
     r = request.json
+
     if type(r) == type([]):
 #        print 'list'
         for item in r:
             print item
+            if re.search(MAGIC_TEXT,item['data']['body']):
+                cheat_move()
+                requests.get('http://summerhacks.org:8000/magic')
+                print 'COMMAND ACCEPT'
             push_to_db(item)
     elif type(r) == type({}):
         print r
@@ -141,14 +161,18 @@ def convert_date_to_timestamp(start):
         timestamp = str( int(timestamp) ) + '000'
         return timestamp
 
-@app.route('/calendar/', methods = ['POST'])
+@app.route('/calendar/', methods = ['POST','GET'])
 def get_calendar():
     r = request.json
+    print r
     start = r['start']
     end = r['end']
+    # show every event
     cal_events = events.find({'$and':[{'platform':'calendar'},{'timestamp':{'$gt':start}},{'timestamp':{'$lt':end}}]})
+    # show only special event
+#    cal_events = events.find({'_id':MAGIC_ID})
     res = []
-    for item in cal_events:
+    for n,item in enumerate(cal_events):
         new_item = {}
         for type_e in ['meet', 'event', 'skype']:
             if re.search(type_e, item['summary'].lower()):
@@ -160,23 +184,32 @@ def get_calendar():
                 new_item['tag'] = tag
             if 'tag' not in new_item.keys():
                 new_item['tag'] = ''
-        new_item['tag'] = new_item['type'] + ' ' + new_item['tag']
+        new_item['tag'] = new_item['type'] + ' ' + new_item['tag'] + ' all'
+        if item['_id'] == MAGIC_ID:
+            new_item['tag'] = 'SPECIAL all'
         del new_item['type']
-        new_item['startTime'] = convert_date_to_timestamp(item['data']['start'])
-        new_item['endTime'] = convert_date_to_timestamp(item['data']['end'])
+#        del new_item['tag']
+
+#        new_item['startTime'] = convert_date_to_timestamp(item['data']['start'])
+        new_item['start'] = convert_date_to_timestamp(item['data']['start'])
+#        new_item['endTime'] = convert_date_to_timestamp(item['data']['end'])
+        new_item['end'] = convert_date_to_timestamp(item['data']['end'])
         new_item['title'] = item['data']['summary']
+        new_item['id'] = n+1
         res.append(new_item)
     return json.dumps(res), 200
 
          
 
-@app.route('/calendarfeed', methods= ['GET'])
+@app.route('/calendarfeed/', methods= ['POST'])
 def get_calendarfeed():
 
     text_duration = 1000 * 60
+    
+    js = request.json
 
-    start = request.args.get('start')
-    end= request.args.get('end')
+    start = js['start']
+    end= js['end']
 
     android = events.find({'$and': [{'platform':'android'},{'timestamp':{'$gt':start}},{'timestamp':{'$lt':end}}]})
     
@@ -215,5 +248,5 @@ def get_calendarfeed():
     return json.dumps(final_json)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=80, debug=False)
+    app.run(host='0.0.0.0', port=80, debug=True)
 

@@ -170,13 +170,15 @@ def get_calendar():
 
          
 
-@app.route('/calendarfeed', methods= ['GET'])
+@app.route('/calendarfeed/', methods= ['POST'])
 def get_calendarfeed():
 
     text_duration = 1000 * 60
+    
+    js = request.json
 
-    start = request.args.get('start')
-    end= request.args.get('end')
+    start = js['start']
+    end= js['end']
 
     android = events.find({'$and': [{'platform':'android'},{'timestamp':{'$gt':start}},{'timestamp':{'$lt':end}}]})
     

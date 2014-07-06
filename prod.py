@@ -7,29 +7,53 @@ client = MongoClient()
 db = client.clarity
 events = db.events
 from pymongo.errors import InvalidDocument
+users = db.users
+
 
 # Method one
 #from bson.objectid import ObjectId
 #idA = ObjectId()
 #print(idA)
 
+@app.route('/users/', methods = ['POST'])
+def refresh_token():
+    r = request.json
+    print r
+    if 'id' not in r.keys():
+        return 'NO ID', 400
+    u = users.find({'id':r['id']}).count()
+    if u:
+#        print r['id']
+#        print r
+        users.update({'id':r['id']}, {'$set' : r})
+#        users.find_and_modify(query={'id',r['id']}, update={'$set', {'a':'b'}})
+        return 'UPDATED', 200
+    else:
+        users.insert(r)
+        return 'INSERTED', 200
+
 @app.route("/")
 def hello():
     return "Hello World!"
+
+def push_to_db(item):
+    try:
+        events.insert(item)
+    except (TypeError, InvalidDocument) as inst:
+        print 'ERROR', inst
 
 @app.route('/post/', methods = ['POST'])
 def save_post():
     r = request.json
     if type(r) == type([]):
+#        print 'list'
         for item in r:
-#            events.insert(item)
-            try:
-                events.insert(item)
-            except (TypeError, InvalidDocument) as inst:
-                print inst
-                pass
+            print item
+            push_to_db(item)
     elif type(r) == type({}):
+        print r
         events.insert(r)
+
 #        try:
 #            xpto = events.put(r)
 #            print xpto
@@ -42,7 +66,7 @@ def save_post():
     
     
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=80, debug=True)
+    app.run(host='0.0.0.0', port=80, debug=False)
 
 
 

@@ -37,7 +37,7 @@ def hello():
 
 def push_to_db(item):
     try:
-        event.insert(item)
+        events.insert(item)
     except (TypeError, InvalidDocument) as inst:
         print 'ERROR', inst
 
